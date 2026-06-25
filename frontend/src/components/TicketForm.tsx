@@ -1,22 +1,22 @@
 import { useState, type FormEvent } from "react";
 import { ApiError, createTicket } from "../api/client";
 import type { Ticket, TicketCreate } from "../types/ticket";
+import { IconSend } from "./icons";
 
 interface TicketFormProps {
-  /** Called after a successful POST. The parent uses this to refetch the list. */
+  /** Called after a successful POST. Parent uses this to refetch the list. */
   onCreated: (created: Ticket) => void;
 }
 
 /**
  * Controlled form for creating a ticket.
  *
- * Validation rules mirror the backend (Pydantic):
+ * Validation mirrors the backend (Pydantic):
  *   title:    1–255 chars
  *   message:  1–4000 chars
  *   category: optional, ≤100 chars
  *
- * We do *not* re-validate client-side beyond basic HTML maxlength; the
- * backend is the source of truth and ApiError surfaces its 422 detail.
+ * Backend is the source of truth — `ApiError` surfaces its 422 detail.
  */
 export function TicketForm({ onCreated }: TicketFormProps) {
   const [title, setTitle] = useState("");
@@ -52,74 +52,91 @@ export function TicketForm({ onCreated }: TicketFormProps) {
       setTitle("");
       setMessage("");
       setCategory("");
-      setSuccess(`Saved — sentiment: ${created.sentiment} (${created.confidence})`);
+      setSuccess(`Classified as ${created.sentiment.toLowerCase()}.`);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Unknown error submitting ticket.");
-      }
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Unknown error submitting ticket."
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-    >
-      <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-        <span>Title</span>
+    <form className="form-grid" onSubmit={handleSubmit} noValidate>
+      <div className="field">
+        <label className="field-label" htmlFor="t-title">Title</label>
         <input
+          id="t-title"
+          className="input"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={255}
           required
           disabled={submitting}
+          placeholder="Brief summary"
         />
-      </label>
+      </div>
 
-      <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-        <span>Message</span>
+      <div className="field">
+        <label className="field-label" htmlFor="t-message">Message</label>
         <textarea
+          id="t-message"
+          className="textarea"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           maxLength={4000}
           required
           rows={4}
           disabled={submitting}
+          placeholder="Describe the issue or feedback…"
         />
-      </label>
+      </div>
 
-      <label style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-        <span>Category (optional)</span>
+      <div className="field">
+        <label className="field-label" htmlFor="t-category">Category</label>
         <input
+          id="t-category"
+          className="input"
           type="text"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           maxLength={100}
           disabled={submitting}
+          placeholder="Optional — e.g. billing, bug, feature"
         />
-      </label>
+      </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        <button type="submit" disabled={!canSubmit}>
-          {submitting ? "Submitting…" : "Submit ticket"}
+      <div className="form-actions">
+        <span
+          className={`form-feedback ${error ? "error" : success ? "success" : ""}`}
+          role={error ? "alert" : "status"}
+        >
+          {error ?? success ?? ""}
+        </span>
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!canSubmit}
+        >
+          {submitting ? (
+            <>
+              <span className="spinner" aria-hidden />
+              <span>Submitting</span>
+            </>
+          ) : (
+            <>
+              <IconSend size={15} />
+              <span>Submit ticket</span>
+            </>
+          )}
         </button>
-        {error && (
-          <span style={{ color: "#b00020" }} role="alert">
-            {error}
-          </span>
-        )}
-        {success && !error && (
-          <span style={{ color: "#0a7f2e" }} role="status">
-            {success}
-          </span>
-        )}
       </div>
     </form>
   );
